@@ -7,15 +7,18 @@ import socket
 curveList = []
 avgVal = 10
 
-ESP32_IP = '192.168.43.40'
+ESP32_IP = '192.168.43.106'
 ESP32_PORT = 8080
 
 def send_command_to_esp32(command):
+    cmd = str(command)
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((ESP32_IP, ESP32_PORT))
             s.sendall(command.encode())
+            s.close()
     except Exception as e:
+        s.close()
         print(f"Error: {e}")
 
 
@@ -24,10 +27,16 @@ def createPath(frame, initialtracbarVal, display=2):
     imgResult = frame.copy()
     frameCpy = frame.copy()
     points = utils.valTrackbar()
+    #if Tracbar not needed, then do cmt trackvar and undo cmt wT and points
     # wT = 600
     # points = np.float32([(initialtracbarVal[0], initialtracbarVal[1]), (wT-initialtracbarVal[0], initialtracbarVal[1]), (initialtracbarVal[2], initialtracbarVal[3]), (wT-initialtracbarVal[2], initialtracbarVal[3])])
-    frameThres = utils.floor_detection(frame)
+
+    # Undo cmt one of three
+    # frameThres = utils.floor_detection(frame)
     # frameThres = utils.thresholdingFrame(frame)
+    frameThres = tempUtils.obstavle_detection(frame)
+
+    
     hT, wT, c= frame.shape
 
     frameWarp = utils.warpImg(frameThres, points, wT, hT)
@@ -60,7 +69,7 @@ def createPath(frame, initialtracbarVal, display=2):
            w = wT // 20
            cv2.line(imgResult, (w * x + int(curve//50 ), midY-10), (w * x + int(curve//50 ), midY+10), (0, 0, 255), 2)
     
-         
+    #    For FPS 
     #    fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
     #    cv2.putText(imgResult, 'FPS '+str(int(fps)), (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (230,50,50), 3)
 
@@ -85,7 +94,7 @@ def createPath(frame, initialtracbarVal, display=2):
 
 
 url = 'http://192.168.43.67/cam-mid.jpg'
-# Test code
+
 if __name__ == "__main__":
     # cap = cv2.VideoCapture(requests.get(url))
     initialtracbarVal = [114, 280, 31, 367]
@@ -93,22 +102,20 @@ if __name__ == "__main__":
     # Read an input frame
     #input_frame = cv2.imread("p1.jpg")
     while True:
+        # ret, frame = cap.read()
         img_resp = requests.get(url)
         img_arr = np.array(bytearray(img_resp.content), dtype=np.uint8)
         frame = cv2.imdecode(img_arr, -1)
-        # ret, frame = cap.read()
+        
         
         # Perform floor detection
         curve = createPath(frame, initialtracbarVal)
         send_command_to_esp32(curve)
         # print(curve)
-        # Perform obstacle detection
-        # obstacle_image, threshold, entropy = obstacle_detection(frame)
         # print(f"Threshold: {threshold}")
         # print(f"Entropy: {entropy}")
         # Display results
         # cv2.imshow("Obstacle Image", obstacle_image)
-
         # cv2.imshow("Main Image", frame)
         # cv2.imshow("Floor Image", floor_image)
         
